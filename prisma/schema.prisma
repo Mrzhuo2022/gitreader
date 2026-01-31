@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// 书籍模型
+model Book {
+  id          String    @id @default(cuid())
+  slug        String    @unique // URL 友好的唯一标识
+  title       String
+  author      String?
+  description String?
+  cover       String?   // 封面图片路径
+  format      String    // markdown | epub | pdf
+  filePath    String    // 文件存储路径
+  metadata    String?   // JSON 格式的额外元数据
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  chapters    Chapter[]
+  ReadingProgress ReadingProgress[]
+  bookmarks   Bookmark[]
+}
+
+// 章节模型（用于 Markdown 和 EPUB）
+model Chapter {
+  id        String  @id @default(cuid())
+  bookId    String
+  book      Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  title     String
+  slug      String  // 章节 URL 标识
+  order     Int     // 排序顺序
+  content   String? // Markdown 内容（仅 Markdown 格式书籍）
+  filePath  String? // EPUB 章节文件路径
+
+  @@unique([bookId, slug])
+  @@index([bookId, order])
+}
+
+// 阅读进度
+model ReadingProgress {
+  id         String   @id @default(cuid())
+  bookId     String
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId     String   @default("anonymous") // 未来可扩展用户系统
+  chapterSlug String?
+  position   String?  // JSON 格式，存储精确位置（页码/CFI/百分比）
+  updatedAt  DateTime @updatedAt
+
+  @@unique([bookId, userId])
+}
+
+// 书签模型
+model Bookmark {
+  id          String   @id @default(cuid())
+  bookId      String
+  book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId      String   @default("anonymous") // 未来可扩展用户系统
+  chapterSlug String?  // 章节标识
+  position    String?  // JSON 格式，存储精确位置（CFI/scrollY/百分比）
+  title       String?  // 用户自定义标题或自动生成的标题
+  note        String?  // 用户备注
+  createdAt   DateTime @default(now())
+
+  @@index([bookId, userId])
+}
